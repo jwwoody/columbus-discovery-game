@@ -1,0 +1,1368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Terra Incognita</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Alegreya:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: full-bleed sea chart on the left, a paper ship's log on the right (stacked below on phones). */
+:root {
+  --walnut: #211812;
+  --walnut-2: #2e2219;
+  --brass: #c9a05a;
+  --paper: #efe3c6;
+  --paper-2: #e3d3ad;
+  --ink: #2c2016;
+  --ink-soft: #6a5640;
+  --rubric: #a33a22;
+  --verdigris: #3f7564;
+  --display: "IM Fell English", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --caps: "IM Fell English SC", "IM Fell English", "Palatino Linotype", Georgia, serif;
+  --body: "Alegreya", "Iowan Old Style", Georgia, serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--walnut);
+  color: var(--paper);
+  font-family: var(--body);
+  font-size: 15px;
+  overflow: hidden;
+}
+.app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  height: 100%;
+}
+.sea { position: relative; min-width: 0; overflow: hidden; background: #1a130d; }
+#sea { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+
+/* HUD */
+.hud {
+  position: absolute; top: 16px; left: 16px;
+  display: flex; gap: 12px; align-items: center;
+  padding: 10px 14px 10px 10px;
+  background: rgba(33, 24, 18, .86);
+  border: 1px solid rgba(201, 160, 90, .55);
+  border-radius: 3px;
+  max-width: calc(100% - 32px);
+  pointer-events: none;
+}
+#compass { width: 84px; height: 84px; flex: none; }
+.hud-lines { display: grid; gap: 2px; font-size: 13.5px; line-height: 1.3; min-width: 0; font-variant-numeric: tabular-nums lining-nums; }
+.hud-lines .k { color: var(--brass); font-family: var(--caps); letter-spacing: .04em; font-size: 12.5px; margin-right: 4px; }
+.hud-date { font-family: var(--display); font-size: 17px; color: var(--paper); }
+
+.controls {
+  position: absolute; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+  pointer-events: none;
+}
+.controls .grp { display: flex; gap: 6px; pointer-events: auto; }
+button {
+  font-family: var(--caps); font-size: 14px; letter-spacing: .03em;
+  color: var(--paper); background: var(--walnut-2);
+  border: 1px solid rgba(201, 160, 90, .6); border-radius: 3px;
+  padding: 8px 12px; cursor: pointer; min-height: 38px;
+  user-select: none; -webkit-user-select: none; touch-action: manipulation;
+}
+button:hover:not(:disabled) { background: #3a2b1f; border-color: var(--brass); }
+button:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+button:disabled { opacity: .4; cursor: default; }
+button.on { background: var(--brass); color: var(--walnut); }
+button.primary { background: var(--rubric); border-color: #c45a3e; color: #fbefd8; }
+button.primary:hover:not(:disabled) { background: #b8452b; }
+
+.toast {
+  position: absolute; left: 50%; top: 18%; transform: translateX(-50%);
+  font-family: var(--display); font-style: italic; font-size: clamp(26px, 5vw, 48px);
+  color: var(--paper); text-shadow: 0 2px 12px rgba(0,0,0,.8);
+  pointer-events: none; text-align: center; transition: opacity .6s; opacity: 0; white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* Ledger */
+.ledger {
+  background: var(--paper);
+  background-image: radial-gradient(ellipse at 30% 0%, rgba(255,255,255,.35), transparent 60%), radial-gradient(ellipse at 100% 100%, rgba(120,90,50,.18), transparent 55%);
+  color: var(--ink);
+  overflow-y: auto;
+  padding-block: 20px 28px;
+  padding-inline: 22px;
+  display: flex; flex-direction: column; gap: 20px;
+  border-left: 6px solid var(--walnut-2);
+  min-width: 0;
+}
+.ledger header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.ledger h1 { font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1; margin: 0; text-wrap: balance; }
+.ledger .sub { font-family: var(--display); font-style: italic; color: var(--ink-soft); margin-top: 4px; }
+.ledger header button { color: var(--ink); background: transparent; border-color: rgba(44,32,22,.35); font-size: 12.5px; padding: 5px 9px; min-height: 0; }
+.ledger header button:hover { background: var(--paper-2); }
+.ledger h2 {
+  font-family: var(--caps); font-weight: 400; font-size: 13px; letter-spacing: .12em;
+  color: var(--rubric); margin: 0 0 8px; border-bottom: 1px solid rgba(44,32,22,.2); padding-bottom: 4px;
+}
+.stats { display: grid; gap: 10px; }
+.stat { display: grid; grid-template-columns: 96px 1fr auto; align-items: center; gap: 10px; font-variant-numeric: tabular-nums lining-nums; }
+.stat .lbl { font-family: var(--caps); font-size: 13.5px; }
+.stat .val { font-size: 13.5px; color: var(--ink-soft); min-width: 74px; text-align: right; }
+.gauge { height: 8px; background: rgba(44,32,22,.12); border: 1px solid rgba(44,32,22,.3); border-radius: 1px; overflow: hidden; }
+.gauge span { display: block; height: 100%; background: var(--verdigris); transition: width .4s, background .4s; }
+.gauge span.warn { background: #b07a25; }
+.gauge span.bad { background: var(--rubric); }
+
+.finds { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.finds li { font-family: var(--display); font-size: 17px; display: flex; justify-content: space-between; gap: 8px; }
+.finds li small { font-family: var(--body); font-size: 12.5px; color: var(--ink-soft); white-space: nowrap; }
+.empty { font-style: italic; color: var(--ink-soft); margin: 0; font-size: 14px; }
+
+.log { display: grid; gap: 10px; }
+.entry { font-size: 14.5px; line-height: 1.45; }
+.entry .when { font-family: var(--caps); color: var(--rubric); font-size: 12.5px; letter-spacing: .05em; display: block; }
+.entry.big { font-family: var(--display); font-size: 17px; }
+.keys { font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin: 0; }
+.keys kbd { font-family: var(--body); border: 1px solid rgba(44,32,22,.3); border-radius: 2px; padding: 0 4px; background: rgba(255,255,255,.3); }
+
+/* Modal */
+.veil {
+  position: fixed; inset: 0; background: rgba(15, 10, 6, .72);
+  display: grid; place-items: center; padding: 16px; z-index: 10;
+}
+.card {
+  background: var(--paper); color: var(--ink);
+  max-width: 520px; width: 100%;
+  max-height: calc(100% - 32px); overflow-y: auto;
+  padding: 26px 28px; border-radius: 2px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6), inset 0 0 60px rgba(120,90,50,.18);
+  border: 1px solid #b89c6c;
+}
+.card h3 { font-family: var(--display); font-weight: 400; font-size: 32px; margin: 0 0 4px; line-height: 1.1; text-wrap: balance; }
+.card .eyebrow { font-family: var(--caps); color: var(--rubric); letter-spacing: .12em; font-size: 13px; }
+.card p { line-height: 1.55; margin: 10px 0; }
+.card .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.card .row button { color: var(--ink); background: var(--paper-2); border-color: rgba(44,32,22,.4); }
+.card .row button.primary { color: #fbefd8; background: var(--rubric); border-color: #8a2e1a; }
+.card input[type=text] {
+  width: 100%; font-family: var(--display); font-size: 24px; padding: 6px 4px;
+  background: transparent; color: var(--ink); border: 0; border-bottom: 2px solid var(--ink);
+  outline: none; margin-top: 8px;
+}
+.card input[type=text]:focus { border-bottom-color: var(--rubric); }
+.card dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 14px 0; font-variant-numeric: tabular-nums lining-nums; }
+.card dt { font-family: var(--caps); color: var(--ink-soft); }
+.card dd { margin: 0; }
+.card ul { margin: 8px 0; padding-left: 20px; line-height: 1.5; }
+
+@media (max-width: 780px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: minmax(0, 62%) minmax(0, 38%); }
+  .ledger { border-left: 0; border-top: 5px solid var(--walnut-2); padding-inline: 16px; }
+  .hud { top: 10px; left: 10px; padding: 7px 10px 7px 7px; gap: 8px; }
+  #compass { width: 62px; height: 62px; }
+  .hud-lines { font-size: 12px; }
+  .hud-date { font-size: 15px; }
+  .hud-lines .opt { display: none; }
+  .controls { left: 8px; right: 8px; bottom: 8px; gap: 4px; }
+  .controls .grp { gap: 4px; }
+  button { padding: 6px 9px; font-size: 13px; min-height: 36px; }
+  .keys { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .toast, .gauge span { transition: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <main class="sea" id="seaWrap">
+    <canvas id="sea" aria-label="Sea chart. Click or tap to set a course."></canvas>
+    <div class="hud">
+      <canvas id="compass" width="168" height="168"></canvas>
+      <div class="hud-lines">
+        <div class="hud-date" id="hDate">3 August 1492</div>
+        <div><span class="k">Watch</span><span id="hWatch">Morning</span></div>
+        <div><span class="k">Course</span><span id="hCourse">SW</span> · <span id="hSpeed">0</span> lg/day</div>
+        <div><span class="k">Wind</span><span id="hWind">from NNE</span></div>
+        <div class="opt"><span class="k">Latitude</span><span id="hLat">37°N</span></div>
+        <div class="opt"><span class="k">Reckoning</span><span id="hReck">at Palos</span></div>
+      </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <div class="controls">
+      <div class="grp">
+        <button id="bPort" title="Turn to port (A or ←)">◀ Port</button>
+        <button id="bStar" title="Turn to starboard (D or →)">Starboard ▶</button>
+      </div>
+      <div class="grp">
+        <button id="bHeave" title="Heave to / make sail (Space)">Heave to</button>
+        <button id="bShore" class="primary" title="Go ashore (E)" disabled>Go ashore</button>
+      </div>
+      <div class="grp">
+        <button id="bSpeed" title="Time speed (F)">1×</button>
+        <button id="bOut" title="Zoom out (−)">−</button>
+        <button id="bIn" title="Zoom in (+)">+</button>
+        <button id="bChart" title="Whole chart (M)">Chart</button>
+        <button id="bPause" title="Pause (P)">Pause</button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="ledger">
+    <header>
+      <div>
+        <h1>Terra Incognita</h1>
+        <div class="sub">Log of the <i>Santa María</i></div>
+      </div>
+      <button id="bNew">New world</button>
+    </header>
+
+    <section>
+      <h2>Ship's stores</h2>
+      <div class="stats">
+        <div class="stat"><span class="lbl">Provisions</span><div class="gauge"><span id="gProv"></span></div><span class="val" id="vProv">60 days</span></div>
+        <div class="stat"><span class="lbl">Crew spirits</span><div class="gauge"><span id="gMor"></span></div><span class="val" id="vMor">Cheerful</span></div>
+        <div class="stat"><span class="lbl">Gold</span><span></span><span class="val" id="vGold">none</span></div>
+        <div class="stat"><span class="lbl">Charted</span><span></span><span class="val" id="vChart">0%</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Lands discovered</h2>
+      <ul class="finds" id="finds"></ul>
+      <p class="empty" id="findsEmpty">None yet. West of the Azores the chart is blank.</p>
+    </section>
+
+    <section>
+      <h2>Daily log</h2>
+      <div class="log" id="log"></div>
+    </section>
+
+    <p class="keys"><kbd>A</kbd>/<kbd>D</kbd> steer · click the chart to set a course · <kbd>Space</kbd> heave to · <kbd>E</kbd> go ashore · <kbd>M</kbd> whole chart · <kbd>F</kbd> faster · <kbd>P</kbd> pause</p>
+  </aside>
+</div>
+
+<div class="veil" id="veil" hidden><div class="card" id="card"></div></div>
+
+<script>
+/*GEN*/
+const W = 480, H = 300;
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function makeNoise(seed) {
+  function h(ix, iy) {
+    let n = Math.imul(ix, 374761393) ^ Math.imul(iy, 668265263) ^ Math.imul(seed, 2246822519);
+    n = Math.imul(n ^ (n >>> 13), 1274126177);
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+  }
+  function vn(x, y) {
+    const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const a = h(ix, iy), b = h(ix + 1, iy), c = h(ix, iy + 1), d = h(ix + 1, iy + 1);
+    return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+  }
+  return function fbm(x, y, oct = 4) {
+    let s = 0, amp = 0.5, f = 1, norm = 0;
+    for (let i = 0; i < oct; i++) {
+      s += amp * vn(x * f + i * 17.31, y * f - i * 9.17);
+      norm += amp; amp *= 0.5; f *= 2.03;
+    }
+    return s / norm;
+  };
+}
+
+function makeWorld(seed) {
+  const rng = mulberry32(seed);
+  const r = (a, b) => a + (b - a) * rng();
+  const fbm = makeNoise(seed);
+  const P = {
+    owC: 0.875 + r(-0.01, 0.01),
+    nwBase: r(0.15, 0.24), nwAmp: r(0.03, 0.06), nwPh: r(0, 6.3), nwFreq: r(5, 9),
+    sb: r(0.27, 0.34), sy: r(0.86, 0.93), gy: r(0.52, 0.62), gd: r(0.05, 0.11),
+    ax: r(0.36, 0.45), ay: r(0.62, 0.71), aw: r(0.08, 0.12),
+  };
+  // Islands already on the charts of 1492: the Canaries and the Azores.
+  const bumps = [];
+  [[0.795, 0.555, 3.4], [0.812, 0.546, 2.6], [0.778, 0.566, 2.4], [0.826, 0.561, 2.8], [0.768, 0.548, 1.9]]
+    .forEach(b => bumps.push([b[0] * W, b[1] * H, b[2]]));
+  [[0.64, 0.30, 2.8], [0.656, 0.312, 2.2], [0.622, 0.288, 2.3], [0.603, 0.276, 1.9], [0.672, 0.296, 1.7]]
+    .forEach(b => bumps.push([b[0] * W, b[1] * H, b[2]]));
+
+  function field(x, y) {
+    const u = x / W, v = y / H;
+    const n = fbm(x * 0.02, y * 0.02);
+    const m = fbm(x * 0.075 + 300, y * 0.075 + 300);
+    // Old World: Iberia and the African bulge.
+    const bulge = 0.045 * Math.exp(-(((v - 0.66) / 0.09) ** 2)) + 0.02 * Math.exp(-(((v - 0.33) / 0.05) ** 2));
+    const ow = (u - (P.owC - bulge + 0.08 * (n - 0.5))) * 22;
+    // New World mainland with a gulf and a southern continent reaching east.
+    const nc = P.nwBase + P.nwAmp * Math.sin(v * P.nwFreq + P.nwPh)
+      + (P.sb - P.nwBase) * Math.exp(-(((v - P.sy) / 0.07) ** 2))
+      - P.gd * Math.exp(-(((v - P.gy) / 0.05) ** 2));
+    const nw = (nc + 0.14 * (n - 0.5) - u) * 16;
+    // An archipelago off the mainland.
+    const am = Math.exp(-(((u - P.ax) / P.aw) ** 2 + ((v - P.ay) / 0.075) ** 2));
+    const isl = (m - 0.5) * 7 + am * 2.7 - 2.55;
+    let k = -2;
+    for (let i = 0; i < bumps.length; i++) {
+      const b = bumps[i];
+      const d = Math.hypot(x - b[0], y - b[1]);
+      if (d < b[2] * 2.5) k = Math.max(k, (b[2] - d) / b[2] + (m - 0.5) * 0.9);
+    }
+    return Math.max(ow, nw, isl, k);
+  }
+
+  const N = W * H;
+  const land = new Uint8Array(N), id = new Int32Array(N).fill(-1);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) land[y * W + x] = field(x + 0.5, y + 0.5) > 0 ? 1 : 0;
+
+  const isKnownCell = (x, y) => x / W > 0.76 || Math.hypot(x - 0.637 * W, y - 0.294 * H) < 20;
+  const masses = [];
+  const q = new Int32Array(N);
+  for (let s = 0; s < N; s++) {
+    if (!land[s] || id[s] >= 0) continue;
+    const mid = masses.length;
+    let qh = 0, qt = 0, cnt = 0, known = false, sx = 0, sy = 0;
+    q[qt++] = s; id[s] = mid;
+    while (qh < qt) {
+      const c = q[qh++], cx = c % W, cy = (c / W) | 0;
+      cnt++; sx += cx; sy += cy;
+      if (isKnownCell(cx, cy)) known = true;
+      const nb = [cx > 0 ? c - 1 : -1, cx < W - 1 ? c + 1 : -1, cy > 0 ? c - W : -1, cy < H - 1 ? c + W : -1];
+      for (const o of nb) if (o >= 0 && land[o] && id[o] < 0) { id[o] = mid; q[qt++] = o; }
+    }
+    const cxm = sx / cnt / W, cym = sy / cnt / H;
+    let kname = null;
+    if (known) kname = cnt > 3000 ? 'Old World' : (cym > 0.45 ? 'the Canaries' : 'the Azores');
+    masses.push({ cells: cnt, known, kname, cx: cxm, cy: cym, discovered: false, visited: false, name: null, lx: 0, ly: 0 });
+  }
+
+  // Distance from every sea cell to the nearest unknown land, for signs of land.
+  const dist = new Uint16Array(N).fill(65535), near = new Int32Array(N).fill(-1);
+  let qh = 0, qt = 0;
+  for (let c = 0; c < N; c++) if (land[c] && !masses[id[c]].known) { dist[c] = 0; near[c] = c; q[qt++] = c; }
+  while (qh < qt) {
+    const c = q[qh++], cx = c % W, cy = (c / W) | 0, d = dist[c] + 1;
+    const nb = [cx > 0 ? c - 1 : -1, cx < W - 1 ? c + 1 : -1, cy > 0 ? c - W : -1, cy < H - 1 ? c + W : -1];
+    for (const o of nb) if (o >= 0 && dist[o] > d) { dist[o] = d; near[o] = near[c]; q[qt++] = o; }
+  }
+
+  // Palos de la Frontera: the first sea cell west of the Iberian coast.
+  const py = Math.round(0.36 * H);
+  let px = Math.round(0.7 * W);
+  while (px < W - 1 && !land[py * W + px]) px++;
+  const palos = { x: px - 2.5, y: py + 0.5 };
+
+  return { seed, P, fbm, field, land, id, masses, dist, near, palos, isKnownCell };
+}
+/*ENDGEN*/
+
+// ---------------------------------------------------------------- constants
+const S = 3, CW = W * S, CH = H * S;
+const SHIP_SPEED = 10;         // cells per day on the best point of sail
+const DAY_SECONDS = 4;         // real seconds per day at 1×
+const LEAGUES = 4;             // leagues per cell
+const MAX_PROV = 60;
+const START = Date.UTC(1492, 7, 3);
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const POINTS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const ISLAND_NAMES = ['San Salvador','Santa María de la Concepción','Fernandina','Isabela','Juana','La Española','Isla Tortuga','Santa María de Guadalupe','Montserrat','Santa María la Antigua','San Martín','Santa Cruz','San Juan Bautista','Santiago','Trinidad','Margarita','Evangelista','Isla Beata','Isla de Arenas','Los Jardines de la Reina','Cabo Hermoso','Isla de Gracia','San Cristóbal','Santa Úrsula','Las Once Mil Vírgenes','Isla Bella','Puerto Santo','Cayo Verde'];
+const MAINLAND_NAMES = ['Tierra Firme','Tierra de Gracia','Terra Nova','Las Indias','Costa de las Perlas','Tierra de Paria'];
+const ENCOUNTERS = [
+  'People came down to the shore, naked and unafraid, and paddled out in canoes carved from a single tree. They traded parrots, balls of cotton thread and short spears for glass beads and little bells.',
+  'We found a river of sweet water and filled every cask. The trees here are green as Castile in May, and none of them are known to us.',
+  'The people sleep in nets slung between posts, which they call hamacas. They gave us cassava bread and a dried leaf they roll and smoke.',
+  'A great canoe of forty paddlers came out to meet us. Their lord sent a mask worked with gold as a gift.',
+  'The shore is thick with mangroves. We went inland half a league and found fields of a grain they call maíz, taller than a man.',
+  'The villagers fled into the forest when we landed, then returned at dusk with fish and fruit. We left them red caps in return.',
+  'We saw dogs that do not bark and birds of every color. The pilots say the soundings here are good for careening the ships.',
+  'Some of the people wore small pieces of gold hanging from their noses. Asked where it came from, they pointed to the south and west.',
+];
+const SIGNS = {
+  far: [
+    'Saw much weed, green and fresh, as if newly torn from rocks.',
+    'A booby flew over the ship. The old pilots say they never stray more than twenty leagues from land.',
+    'A whale was sighted. They are found near coasts, the sailors say.',
+    'The sea was calm as a river and the air soft, like April in Seville.',
+  ],
+  mid: [
+    'Petrels and terns passed the ship, flying toward the {dir}.',
+    'A green reed floated past the Pinta.',
+    'At dusk great flocks of small birds passed overhead, heading {dir}. I altered course to follow them.',
+    'Saw a crab alive in the weed. It is a certain sign of land.',
+  ],
+  near: [
+    'The Niña fished up a branch with little red berries, freshly broken.',
+    'A stick floated by, carved with iron, it seemed, by a human hand. Everyone breathed again.',
+    'Land birds sang in the dark all through the middle watch, somewhere to the {dir}.',
+    'The water has changed color. We sounded and found bottom at forty fathoms.',
+  ],
+};
+
+// ---------------------------------------------------------------- state
+let world, chart, cctx, img, seen, cellSeen, seenCount, dirty;
+let state;
+const cam = { x: 0, y: 0, zoom: 6, overview: false };
+const cv = document.getElementById('sea');
+const ctx = cv.getContext('2d');
+const compass = document.getElementById('compass');
+const cmp = compass.getContext('2d');
+let dpr = 1, modalOpen = false;
+const $ = id => document.getElementById(id);
+
+function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+function smooth(a, b, x) { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
+function angDiff(a, b) { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }
+function pointName(screenAngle) {
+  const deg = ((screenAngle * 180 / Math.PI) + 90 + 360) % 360;
+  return POINTS[Math.round(deg / 22.5) % 16];
+}
+function grain(px, py) {
+  let n = Math.imul(px, 73856093) ^ Math.imul(py, 19349663);
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+}
+function dateStr(dayInt) {
+  const d = new Date(START + dayInt * 86400000);
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ---------------------------------------------------------------- the chart
+function paintSeen(px, py) {
+  const x = (px + 0.5) / S, y = (py + 0.5) / S;
+  const v = world.field(x, y);
+  const g = (grain(px, py) - 0.5) * 12;
+  const d = img.data, i = (py * CW + px) * 4;
+  let r, gg, b;
+  if (v > 0) {
+    const t = Math.min(1, v / 1.8);
+    r = 208 - 34 * t; gg = 186 - 16 * t; b = 134 - 26 * t;
+    if ((px + py) % 5 === 0) { r *= 0.83; gg *= 0.83; b *= 0.83; }
+    if (v < 0.09) { r = 66; gg = 46; b = 30; }
+    else if (v < 0.3) { const k = 0.82 + 0.18 * (v - 0.09) / 0.21; r *= k; gg *= k; b *= k; }
+  } else {
+    const t = clamp(1 + v / 1.1, 0, 1) * 0.85;
+    r = 236 + (198 - 236) * t; gg = 227 + (210 - 227) * t; b = 199 + (188 - 199) * t;
+    const c1 = Math.abs(v + 0.28), c2 = Math.abs(v + 0.62);
+    if (c1 < 0.012 || c2 < 0.01) { r = r * 0.72 + 70 * 0.28; gg = gg * 0.72 + 90 * 0.28; b = b * 0.72 + 80 * 0.28; }
+  }
+  d[i] = r + g; d[i + 1] = gg + g; d[i + 2] = b + g; d[i + 3] = 255;
+}
+
+function buildChart() {
+  chart = document.createElement('canvas');
+  chart.width = CW; chart.height = CH;
+  cctx = chart.getContext('2d', { willReadFrequently: true });
+  img = cctx.createImageData(CW, CH);
+  const d = img.data;
+  for (let py = 0; py < CH; py++) {
+    for (let px = 0; px < CW; px++) {
+      const u = px / CW, v = py / CH;
+      const m = world.fbm(px * 0.005, py * 0.005, 3) - 0.5;
+      const edge = Math.min(u, 1 - u, v * 1.6, (1 - v) * 1.6);
+      const vig = edge < 0.08 ? (0.08 - edge) / 0.08 : 0;
+      const g = (grain(px, py) - 0.5) * 14;
+      const i = (py * CW + px) * 4;
+      d[i] = 206 + m * 46 - vig * 46 + g;
+      d[i + 1] = 186 + m * 42 - vig * 50 + g;
+      d[i + 2] = 146 + m * 34 - vig * 52 + g;
+      d[i + 3] = 255;
+    }
+  }
+  cctx.putImageData(img, 0, 0);
+  cctx.fillStyle = 'rgba(70, 50, 32, .5)';
+  cctx.textAlign = 'center';
+  cctx.font = 'italic 46px "IM Fell English", Georgia, serif';
+  cctx.fillText('Mare Tenebrosum', 0.56 * CW, 0.48 * CH);
+  cctx.font = 'italic 38px "IM Fell English", Georgia, serif';
+  cctx.fillText('Terra Incognita', 0.17 * CW, 0.3 * CH);
+  cctx.fillText('Terra Incognita', 0.2 * CW, 0.78 * CH);
+  cctx.font = 'italic 24px "IM Fell English", Georgia, serif';
+  cctx.fillText('hic sunt dracones', 0.42 * CW, 0.16 * CH);
+  img = cctx.getImageData(0, 0, CW, CH);
+
+  seen = new Uint8Array(CW * CH);
+  cellSeen = new Uint8Array(W * H);
+  seenCount = 0;
+  // The known world is already on the chart.
+  for (let py = 0; py < CH; py++) for (let px = 0; px < CW; px++) {
+    if (world.isKnownCell(px / S, py / S)) { seen[py * CW + px] = 1; seenCount++; paintSeen(px, py); }
+  }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (world.isKnownCell(x + 0.5, y + 0.5)) cellSeen[y * W + x] = 1;
+  cctx.putImageData(img, 0, 0);
+  dirty = null;
+}
+
+function reveal(cx, cy, r) {
+  const R = r * S, pcx = cx * S, pcy = cy * S, R2 = R * R;
+  const x0 = Math.max(0, Math.floor(pcx - R)), x1 = Math.min(CW - 1, Math.ceil(pcx + R));
+  const y0 = Math.max(0, Math.floor(pcy - R)), y1 = Math.min(CH - 1, Math.ceil(pcy + R));
+  let any = false;
+  for (let py = y0; py <= y1; py++) {
+    const dy = py + 0.5 - pcy;
+    for (let px = x0; px <= x1; px++) {
+      const dx = px + 0.5 - pcx;
+      if (dx * dx + dy * dy > R2) continue;
+      const p = py * CW + px;
+      if (seen[p]) continue;
+      seen[p] = 1; seenCount++; paintSeen(px, py); any = true;
+    }
+  }
+  if (any) {
+    if (!dirty) dirty = [x0, y0, x1, y1];
+    else { dirty[0] = Math.min(dirty[0], x0); dirty[1] = Math.min(dirty[1], y0); dirty[2] = Math.max(dirty[2], x1); dirty[3] = Math.max(dirty[3], y1); }
+  }
+  const r2 = r * r;
+  for (let y = Math.max(0, Math.floor(cy - r)); y <= Math.min(H - 1, Math.ceil(cy + r)); y++) {
+    for (let x = Math.max(0, Math.floor(cx - r)); x <= Math.min(W - 1, Math.ceil(cx + r)); x++) {
+      const ddx = x + 0.5 - cx, ddy = y + 0.5 - cy;
+      if (ddx * ddx + ddy * ddy > r2) continue;
+      const c = y * W + x;
+      if (cellSeen[c]) continue;
+      cellSeen[c] = 1;
+      if (world.land[c]) {
+        const m = world.masses[world.id[c]];
+        if (!m.known && !m.discovered) {
+          m.discovered = true; m.lx = x + 0.5; m.ly = y + 0.5;
+          state.pending.push(world.id[c]);
+        }
+      }
+    }
+  }
+}
+
+function flushChart() {
+  if (!dirty) return;
+  const [x0, y0, x1, y1] = dirty;
+  cctx.putImageData(img, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+  dirty = null;
+}
+
+// ---------------------------------------------------------------- weather
+function rerollWeather() {
+  const a = Math.random() * Math.PI * 2;
+  state.wvx = Math.cos(a); state.wvy = Math.sin(a);
+  const g = Math.random() * Math.PI * 2, gs = Math.random() * 0.3;
+  state.gx = Math.cos(g) * gs; state.gy = Math.sin(g) * gs;
+}
+
+function windNow() {
+  const v = state.y / H;
+  const trade = smooth(0.43, 0.51, v);
+  const west = 1 - smooth(0.34, 0.42, v);
+  const varb = Math.max(0, 1 - trade - west);
+  let vx = trade * Math.cos(Math.PI - 0.28) + west * 0.9 * Math.cos(-0.18) + varb * 0.6 * state.wvx + state.gx;
+  let vy = trade * Math.sin(Math.PI - 0.28) + west * 0.9 * Math.sin(-0.18) + varb * 0.6 * state.wvy + state.gy;
+  if (state.storm > 0) { vx = vx * 0.4 + state.svx * 1.3; vy = vy * 0.4 + state.svy * 1.3; }
+  return { a: Math.atan2(vy, vx), s: Math.hypot(vx, vy) };
+}
+
+function sailFactor(rel) {
+  // rel: angle between heading and where the wind blows, 0 = running before it
+  if (rel < 0.6) return 0.85 + 0.15 * rel / 0.6;
+  if (rel < 1.8) return 1;
+  if (rel < 2.3) return 1 - 0.64 * (rel - 1.8) / 0.5;
+  return 0.36 - 0.12 * (rel - 2.3) / (Math.PI - 2.3);
+}
+
+function windWord(s) {
+  if (state.storm > 0) return 'a gale';
+  if (s < 0.35) return 'light airs';
+  if (s < 0.6) return 'a gentle breeze';
+  if (s < 0.95) return 'a fair breeze';
+  return 'a fresh breeze';
+}
+
+function hourOf() { return (state.day % 1) * 24; }
+function darkness() {
+  const h = hourOf();
+  if (h >= 6 && h < 18) return 0;
+  if (h >= 18 && h < 20) return (h - 18) / 2;
+  if (h >= 4 && h < 6) return 1 - (h - 4) / 2;
+  return 1;
+}
+function watchName() {
+  const h = hourOf();
+  const names = ['Middle watch', 'Morning watch', 'Forenoon watch', 'Afternoon watch', 'Dog watches', 'First watch'];
+  const w = Math.floor(h / 4);
+  const glass = Math.floor((h % 4) * 2) + 1;
+  return `${names[w]} · glass ${glass}`;
+}
+function sightRadius() {
+  let r = 9 - 5.5 * darkness();
+  if (state.storm > 0) r = Math.min(r, 5);
+  return r;
+}
+
+// ---------------------------------------------------------------- log + UI
+function log(text, opts = {}) {
+  const el = document.createElement('div');
+  el.className = 'entry' + (opts.big ? ' big' : '');
+  const when = document.createElement('span');
+  when.className = 'when';
+  when.textContent = `Day ${Math.floor(state.day) + 1} · ${dateStr(Math.floor(state.day))}`;
+  el.append(when, document.createTextNode(text));
+  const box = $('log');
+  box.prepend(el);
+  while (box.children.length > 80) box.lastChild.remove();
+}
+
+let toastTimer;
+function toast(text) {
+  const t = $('toast');
+  t.textContent = text; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+function spiritsWord(m) {
+  if (m > 80) return 'Cheerful';
+  if (m > 60) return 'Steady';
+  if (m > 40) return 'Restless';
+  if (m > 20) return 'Grumbling';
+  return 'Mutinous';
+}
+
+function updateLedger() {
+  const p = state.provisions, m = state.morale;
+  const gp = $('gProv'), gm = $('gMor');
+  gp.style.width = (p / MAX_PROV * 100) + '%';
+  gp.className = p < 8 ? 'bad' : p < 16 ? 'warn' : '';
+  $('vProv').textContent = `${Math.ceil(p)} day${Math.ceil(p) === 1 ? '' : 's'}`;
+  gm.style.width = m + '%';
+  gm.className = m < 25 ? 'bad' : m < 50 ? 'warn' : '';
+  $('vMor').textContent = spiritsWord(m);
+  $('vGold').textContent = state.gold ? `${state.gold} mark${state.gold === 1 ? '' : 's'}` : 'none';
+  $('vChart').textContent = chartedPct() + '%';
+}
+
+function chartedPct() { return Math.round(seenCount / (CW * CH) * 1000) / 10; }
+
+function updateFinds() {
+  const ul = $('finds');
+  ul.innerHTML = '';
+  for (const mid of state.found) {
+    const m = world.masses[mid];
+    const li = document.createElement('li');
+    const name = document.createElement('span'); name.textContent = m.name;
+    const sm = document.createElement('small');
+    sm.textContent = (m.cells > 3000 ? 'mainland' : m.cells > 300 ? 'large island' : 'island') + (m.visited ? ' · landed' : '');
+    li.append(name, sm);
+    ul.append(li);
+  }
+  $('findsEmpty').hidden = state.found.length > 0;
+}
+
+function updateHud() {
+  $('hDate').textContent = dateStr(Math.floor(state.day));
+  $('hWatch').textContent = watchName();
+  $('hCourse').textContent = state.anchored ? 'hove to' : pointName(state.heading);
+  $('hSpeed').textContent = Math.round(state.speed * LEAGUES);
+  const w = state.wind;
+  $('hWind').textContent = `${windWord(w.s)} from ${pointName(w.a + Math.PI)}`;
+  $('hLat').textContent = `${Math.round(52 - state.y / H * 48)}°N by quadrant`;
+  const lg = Math.round(state.est);
+  $('hReck').textContent = Math.abs(lg) < 6 ? 'near Palos' : `≈${Math.abs(lg)} leagues ${lg > 0 ? 'W' : 'E'} of Palos`;
+  const near = nearLand() >= 0;
+  const b = $('bShore');
+  b.disabled = !near && !nearPalos();
+  b.textContent = nearPalos() ? 'Dock at Palos' : 'Go ashore';
+  $('bHeave').textContent = state.anchored ? 'Make sail' : 'Heave to';
+  $('bHeave').classList.toggle('on', state.anchored);
+  $('bPause').classList.toggle('on', state.paused);
+  $('bChart').classList.toggle('on', cam.overview);
+  updateLedger();
+}
+
+function drawCompass() {
+  const s = compass.width, c = s / 2, R = s / 2 - 6;
+  cmp.clearRect(0, 0, s, s);
+  cmp.save(); cmp.translate(c, c);
+  cmp.fillStyle = '#efe3c6';
+  cmp.beginPath(); cmp.arc(0, 0, R, 0, Math.PI * 2); cmp.fill();
+  cmp.strokeStyle = '#2c2016'; cmp.lineWidth = 2; cmp.stroke();
+  // 16-point rose; principal winds in black, half winds green, quarter in red as on portolans
+  for (let i = 0; i < 32; i++) {
+    const a = i / 32 * Math.PI * 2 - Math.PI / 2;
+    const len = i % 4 === 0 ? R - 4 : i % 2 === 0 ? R * 0.72 : R * 0.5;
+    cmp.strokeStyle = i % 4 === 0 ? '#2c2016' : i % 2 === 0 ? '#3f7564' : '#a33a22';
+    cmp.lineWidth = i % 4 === 0 ? 2 : 1.2;
+    cmp.beginPath(); cmp.moveTo(0, 0); cmp.lineTo(Math.cos(a) * len, Math.sin(a) * len); cmp.stroke();
+  }
+  cmp.fillStyle = '#a33a22';
+  cmp.font = '22px "IM Fell English SC", Georgia, serif';
+  cmp.textAlign = 'center'; cmp.textBaseline = 'middle';
+  cmp.fillText('N', 0, -R + 16);
+  // wind: arrow shows where the wind blows to
+  const wa = state.wind.a;
+  cmp.strokeStyle = '#3f7564'; cmp.fillStyle = '#3f7564'; cmp.lineWidth = 5;
+  const wl = R * 0.85;
+  cmp.beginPath(); cmp.moveTo(-Math.cos(wa) * wl, -Math.sin(wa) * wl); cmp.lineTo(Math.cos(wa) * wl * 0.7, Math.sin(wa) * wl * 0.7); cmp.stroke();
+  cmp.save(); cmp.translate(Math.cos(wa) * wl * 0.7, Math.sin(wa) * wl * 0.7); cmp.rotate(wa);
+  cmp.beginPath(); cmp.moveTo(14, 0); cmp.lineTo(-6, -10); cmp.lineTo(-6, 10); cmp.closePath(); cmp.fill(); cmp.restore();
+  // heading needle
+  const h = state.heading;
+  cmp.save(); cmp.rotate(h);
+  cmp.fillStyle = '#a33a22';
+  cmp.beginPath(); cmp.moveTo(R - 8, 0); cmp.lineTo(0, -9); cmp.lineTo(-R * 0.45, 0); cmp.lineTo(0, 9); cmp.closePath(); cmp.fill();
+  cmp.restore();
+  cmp.fillStyle = '#2c2016'; cmp.beginPath(); cmp.arc(0, 0, 6, 0, Math.PI * 2); cmp.fill();
+  cmp.restore();
+}
+
+// ---------------------------------------------------------------- modal
+function showModal({ eyebrow, title, html, input, buttons }) {
+  modalOpen = true;
+  const card = $('card');
+  card.innerHTML = '';
+  if (eyebrow) { const e = document.createElement('div'); e.className = 'eyebrow'; e.textContent = eyebrow; card.append(e); }
+  const h = document.createElement('h3'); h.textContent = title; card.append(h);
+  const body = document.createElement('div'); body.innerHTML = html; card.append(body);
+  let inp = null;
+  if (input) {
+    inp = document.createElement('input'); inp.type = 'text'; inp.id = 'nameInput'; inp.maxLength = 40;
+    inp.value = input; inp.setAttribute('aria-label', 'Name');
+    card.append(inp);
+  }
+  const row = document.createElement('div'); row.className = 'row';
+  buttons.forEach((b, i) => {
+    const el = document.createElement('button');
+    el.textContent = b.label;
+    if (i === 0) el.className = 'primary';
+    el.onclick = () => { closeModal(); b.act(inp ? inp.value.trim() : null); };
+    row.append(el);
+  });
+  card.append(row);
+  $('veil').hidden = false;
+  if (inp) {
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') row.firstChild.click(); e.stopPropagation(); });
+    setTimeout(() => { inp.focus(); inp.select(); }, 30);
+  } else setTimeout(() => row.firstChild.focus(), 30);
+}
+function closeModal() { $('veil').hidden = true; modalOpen = false; }
+function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+// ---------------------------------------------------------------- game flow
+function newGame(seed) {
+  world = makeWorld(seed);
+  state = {
+    x: world.palos.x, y: world.palos.y, heading: Math.PI * 0.62, day: 0.23,
+    provisions: MAX_PROV, morale: 100, gold: 0, daysSinceLand: 0,
+    anchored: false, target: null, turn: 0, speedMult: 1, paused: false, speed: 0,
+    wvx: 1, wvy: 0, gx: 0, gy: 0, storm: 0, svx: 0, svy: 0, wind: { a: 0, s: 0 },
+    track: [], lastTrack: 0, est: 0, err: 0.08, dayStart: null, pending: [], found: [],
+    promised: false, promiseDay: 0, promiseFound: 0, lowWarned: false, toldFalse: false,
+    pinzon: false, lastBlocked: -10, voyageStart: 0, firstSight: true,
+  };
+  rerollWeather();
+  state.wind = windNow();
+  state.dayStart = { x: state.x, y: state.y };
+  buildChart();
+  $('log').innerHTML = '';
+  updateFinds();
+  cam.x = state.x; cam.y = state.y; cam.overview = false;
+  fitZoom();
+  log('Departed the bar of Saltés at Palos half an hour before sunrise, with the Santa María, the Pinta and the Niña and ninety men. Their Majesties bid us find a road to the Indies by the west.', { big: true });
+}
+
+function newDay() {
+  const dayInt = Math.floor(state.day);
+  state.provisions = Math.max(0, state.provisions - 1);
+  state.daysSinceLand++;
+  state.err = (Math.random() - 0.35) * 0.3;
+  rerollWeather();
+
+  // the day's run
+  const dx = state.x - state.dayStart.x, dy = state.y - state.dayStart.y;
+  const run = Math.hypot(dx, dy) * LEAGUES;
+  let text = run < 3 ? 'Made little way.' : `Sailed ${Math.round(run)} leagues ${pointName(Math.atan2(dy, dx))}.`;
+  state.dayStart = { x: state.x, y: state.y };
+
+  // weather
+  const v = state.y / H;
+  if (state.storm > 0) state.storm--;
+  else if (Math.random() < (v < 0.45 ? 0.06 : 0.03) && state.daysSinceLand > 2) {
+    state.storm = 1 + (Math.random() < 0.4 ? 1 : 0);
+    const a = Math.random() * Math.PI * 2; state.svx = Math.cos(a); state.svy = Math.sin(a);
+    state.morale -= 5;
+    text += ' A storm rose from the ' + pointName(a + Math.PI) + '. The sea ran very high and we took in all sail but the foresail. The men vowed pilgrimages if spared.';
+  }
+
+  // spirits
+  // Homeward bound with news of land, the men sail gladly.
+  const homeward = state.found.length > 0 && !state.anchored && Math.cos(state.heading) > 0.2;
+  let dm = 0.4;
+  if (homeward) {
+    if (!state.homewardNoted && state.daysSinceLand > 3) {
+      state.homewardNoted = true;
+      text += ' The bows point toward Castile at last, and the men sing at their work.';
+    }
+  } else if (state.daysSinceLand > 9) dm = -(1 + (state.daysSinceLand - 10) * 0.11);
+  if (state.provisions <= 0) dm -= 9;
+  else if (state.provisions < 8) dm -= 3;
+  state.morale += dm;
+
+  // signs of land
+  const c = (Math.floor(state.y) * W + Math.floor(state.x));
+  const d = world.dist[c], n = world.near[c];
+  if (n >= 0 && d < 30 && !world.masses[world.id[n]].discovered && Math.random() < 0.08 + 0.7 * (1 - d / 30)) {
+    const tier = d < 9 ? 'near' : d < 18 ? 'mid' : 'far';
+    const tx = n % W + 0.5, ty = Math.floor(n / W) + 0.5;
+    const dir = pointName(Math.atan2(ty - state.y, tx - state.x) + (Math.random() - 0.5) * 0.9);
+    text += ' ' + pick(SIGNS[tier]).replace('{dir}', dir);
+    state.morale += tier === 'near' ? 9 : tier === 'mid' ? 6 : 3;
+  } else if (!state.pinzon && state.daysSinceLand > 14 && Math.random() < 0.12) {
+    state.pinzon = true;
+    text += ' At sunset Martín Alonso Pinzón cried "Land!" from the Pinta and claimed the reward. All hands sang the Gloria. By morning it was only cloud.';
+    state.morale -= 6;
+  }
+
+  // the second log
+  if (!state.toldFalse && state.est > 180) {
+    state.toldFalse = true;
+    text += ` By my reckoning we have made ${Math.round(state.est)} leagues, but I told the crew ${Math.round(state.est * 0.8)}, so they would not take fright at being so far from home.`;
+  }
+
+  if (state.provisions === 10 && !state.lowWarned) { state.lowWarned = true; text += ' The steward reports ten days of biscuit and water left.'; }
+  if (state.provisions === 0) text += ' The last of the water is gone. The biscuit is crawling with weevils.';
+
+  // the promise of three days
+  if (!state.promised && state.morale < 22) {
+    state.promised = true; state.promiseDay = dayInt + 3; state.promiseFound = state.found.length;
+    state.morale += 22;
+    text += ' The men gathered at the mainmast and demanded we turn for Castile. I promised them that if no land were seen in three days, we would turn back.';
+  } else if (state.promised && state.promiseDay && dayInt >= state.promiseDay) {
+    if (state.found.length === state.promiseFound) {
+      state.morale -= 25;
+      text += ' Three days have passed with no land. The men no longer believe me.';
+    }
+    state.promiseDay = 0;
+  }
+
+  state.morale = clamp(state.morale, 0, 100);
+  log(text);
+  if (state.morale <= 0) mutiny();
+}
+
+function nearLand() {
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2;
+    for (const r of [1.2, 2.2]) {
+      const x = state.x + Math.cos(a) * r, y = state.y + Math.sin(a) * r;
+      if (world.field(x, y) > 0) {
+        const cx = clamp(Math.floor(x), 0, W - 1), cy = clamp(Math.floor(y), 0, H - 1);
+        let c = cy * W + cx;
+        if (!world.land[c]) {
+          // fall back to any nearby land cell
+          for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+            const cc = clamp(cy + oy, 0, H - 1) * W + clamp(cx + ox, 0, W - 1);
+            if (world.land[cc]) c = cc;
+          }
+        }
+        if (world.land[c]) return c;
+      }
+    }
+  }
+  return -1;
+}
+function nearPalos() { return Math.hypot(state.x - world.palos.x, state.y - world.palos.y) < 5; }
+
+function restock() { state.provisions = MAX_PROV; state.lowWarned = false; }
+
+function passDay() {
+  const next = Math.floor(state.day) + 1;
+  state.day = next + 0.3;
+  newDay();
+}
+
+function goAshore() {
+  if (modalOpen || state.over) return;
+  if (nearPalos()) return dockPalos();
+  const c = nearLand();
+  if (c < 0) return;
+  const m = world.masses[world.id[c]];
+  if (m.known) {
+    if (m.kname === 'Old World') {
+      log(state.y / H > 0.45
+        ? 'This is the coast of Guinea, where the King of Portugal\'s caravels keep watch. We stood off and did not land.'
+        : 'We are off the coast of Portugal. Better not to put in there; we will make for Palos.');
+      return;
+    }
+    passDay();
+    restock(); state.morale = clamp(state.morale + 20, 0, 100); state.daysSinceLand = 0;
+    log(m.kname === 'the Canaries'
+      ? 'Anchored at San Sebastián de la Gomera. Took on water, firewood, meat and cheese, and repaired the Pinta\'s rudder.'
+      : 'Put in at Santa Maria in the Azores for water and wood. The Portuguese captain eyed us with suspicion.');
+    updateHud();
+    return;
+  }
+  passDay();
+  restock(); state.morale = 100; state.daysSinceLand = 0;
+  if (!m.visited) {
+    m.visited = true;
+    let text = `Went ashore at ${m.name} with the royal banner and took possession for the King and Queen. ` + pick(ENCOUNTERS);
+    if (Math.random() < 0.55) {
+      const g = 1 + Math.floor(Math.random() * 3);
+      state.gold += g;
+      text += ` We traded for ${g} mark${g > 1 ? 's' : ''} of gold.`;
+    }
+    log(text, { big: true });
+  } else {
+    log(`Went ashore again at ${m.name} for water, fruit and firewood.`);
+  }
+  updateFinds();
+  updateHud();
+}
+
+function titleFor(n) {
+  if (n === 0) return 'A sailor with tall tales';
+  if (n <= 2) return 'Captain of the Ocean Sea';
+  if (n <= 5) return 'Viceroy and Governor of the Indies';
+  return 'Admiral of the Ocean Sea';
+}
+
+function dockPalos() {
+  const days = Math.floor(state.day) - state.voyageStart;
+  restock(); state.morale = 100; state.daysSinceLand = 0; state.promised = false; state.pinzon = false; state.homewardNoted = false;
+  state.anchored = true;
+  if (!state.found.length) {
+    log('Anchored at Palos and took on fresh stores. There is nothing yet to report to Their Majesties.');
+    updateHud();
+    return;
+  }
+  const names = state.found.map(id => `<li>${esc(world.masses[id].name)}${world.masses[id].visited ? '' : ' <i>(sighted only)</i>'}</li>`).join('');
+  log(`Anchored at Palos after ${days} days. Rode to Barcelona to give account to Their Majesties.`, { big: true });
+  showModal({
+    eyebrow: 'Report to the Crown · ' + dateStr(Math.floor(state.day)),
+    title: titleFor(state.found.length),
+    html: `<p>You present parrots, cotton, and ${state.gold ? state.gold + ' marks of gold' : 'no gold at all'} to Ferdinand and Isabella at court. The lands you claimed for Castile:</p><ul>${names}</ul>
+      <dl><dt>Days at sea</dt><dd>${days}</dd><dt>Lands found</dt><dd>${state.found.length}</dd><dt>World charted</dt><dd>${chartedPct()}%</dd></dl>
+      <p>The chart is still mostly blank. Their Majesties will fund another voyage.</p>`,
+    buttons: [
+      { label: 'Sail again', act: () => { state.voyageStart = Math.floor(state.day); state.anchored = false; log('Weighed anchor at Palos for another voyage to the west.'); } },
+      { label: 'Discover a new world', act: () => startFresh() },
+    ],
+  });
+}
+
+function mutiny() {
+  state.over = true;
+  const starving = state.provisions <= 0;
+  showModal({
+    eyebrow: dateStr(Math.floor(state.day)),
+    title: starving ? 'The water ran out' : 'Mutiny',
+    html: starving
+      ? `<p>With no water left, the crew seized the ship and turned for home. You return to Palos in irons.</p>`
+      : `<p>The crew would follow you no farther into the Sea of Darkness. They took the ship and sailed it home with you locked in the stern cabin.</p>`,
+    buttons: [
+      { label: 'Return to Palos', act: () => {
+        state.x = world.palos.x; state.y = world.palos.y; state.dayStart = { x: state.x, y: state.y };
+        state.est = 0; state.over = false; state.target = null; restock(); state.morale = 80; state.daysSinceLand = 0;
+        state.promised = false; state.pinzon = false; state.homewardNoted = false; state.day = Math.floor(state.day) + 30.25; state.voyageStart = Math.floor(state.day);
+        state.track.push(null);
+        log('Released at Palos after a month, and given command again. The chart you made is still yours.', { big: true });
+      } },
+      { label: 'Discover a new world', act: () => startFresh() },
+    ],
+  });
+}
+
+function handleDiscovery() {
+  if (modalOpen || !state.pending.length) return;
+  const mid = state.pending.shift();
+  const m = world.masses[mid];
+  const big = m.cells > 3000;
+  const used = new Set(state.found.map(i => world.masses[i].name));
+  const pool = (big ? MAINLAND_NAMES : ISLAND_NAMES).filter(n => !used.has(n));
+  const suggestion = pool.length ? pool[0] : `Isla ${state.found.length + 1}`;
+  const first = state.firstSight;
+  state.firstSight = false;
+  state.morale = 100; state.daysSinceLand = 0;
+  toast('¡Tierra! ¡Tierra!');
+  const dir = pointName(Math.atan2(m.ly - state.y, m.lx - state.x));
+  showModal({
+    eyebrow: `Land to the ${dir} · ${dateStr(Math.floor(state.day))}`,
+    title: first ? '¡Tierra! ¡Tierra!' : (big ? 'A great coast' : 'Another island'),
+    html: first
+      ? `<p>Rodrigo de Triana, the lookout on the Pinta, saw it first: a white cliff in the moonlight, two leagues off. A coast no chart in Europe shows.</p><p>What will you name it?</p>`
+      : big
+        ? `<p>The coast runs on past the horizon in both directions. This is no island; it may be the mainland of the Indies, or something no one has imagined.</p><p>What will you name it?</p>`
+        : `<p>The lookout reports land to the ${dir}. It is on no chart.</p><p>What will you name it?</p>`,
+    input: suggestion,
+    buttons: [{ label: 'Claim it for Castile', act: name => {
+      m.name = name || suggestion;
+      state.found.push(mid);
+      updateFinds();
+      log(`Sighted land to the ${dir} and named it ${m.name}.`, { big: true });
+    } }],
+  });
+}
+
+function startFresh() {
+  closeModal();
+  newGame((Math.random() * 2 ** 31) | 0);
+  updateHud();
+}
+
+// ---------------------------------------------------------------- update
+function update(dt) {
+  if (state.paused || modalOpen || state.over) return;
+  const dd = dt * state.speedMult / DAY_SECONDS;
+
+  if (state.turn) { state.heading += state.turn * 1.7 * dt; state.target = null; }
+  else if (state.target) {
+    const b = Math.atan2(state.target.y - state.y, state.target.x - state.x);
+    const diff = angDiff(b, state.heading);
+    state.heading += clamp(diff, -2.4 * dt, 2.4 * dt);
+    if (Math.hypot(state.target.x - state.x, state.target.y - state.y) < 1.2) { state.target = null; state.anchored = true; }
+  }
+  state.heading = angDiff(state.heading, 0);
+
+  const w = windNow(); state.wind = w;
+  state.speed = 0;
+  if (!state.anchored) {
+    const rel = Math.abs(angDiff(state.heading, w.a));
+    const spd = SHIP_SPEED * clamp(w.s, 0.25, 1.4) * sailFactor(rel);
+    const step = spd * dd;
+    let nx = clamp(state.x + Math.cos(state.heading) * step, 1.5, W - 1.5);
+    let ny = clamp(state.y + Math.sin(state.heading) * step, 1.5, H - 1.5);
+    const blocked = (x, y) => world.field(x, y) > -0.06;
+    if (blocked(nx, ny)) {
+      nx = state.x; ny = state.y;
+      if (state.target && world.field(state.target.x, state.target.y) > 0) {
+        // Course was set onto land: stop off the coast.
+        state.target = null; state.anchored = true;
+        toast('Hove to off the coast');
+      } else {
+        // Coast along the shore, keeping to the side we last slid toward.
+        const side = state.slide || 1;
+        let ok = false;
+        for (const off of [0.35, 0.7, 1.05, 1.4, 1.75]) {
+          for (const sgn of [side, -side]) {
+            const a = state.heading + off * sgn, s = step * Math.cos(off * 0.7);
+            const tx = clamp(state.x + Math.cos(a) * s, 1.5, W - 1.5), ty = clamp(state.y + Math.sin(a) * s, 1.5, H - 1.5);
+            if (!blocked(tx, ty)) { nx = tx; ny = ty; state.slide = sgn; ok = true; break; }
+          }
+          if (ok) break;
+        }
+        if (!ok && state.day - state.lastBlocked > 1) {
+          state.lastBlocked = state.day;
+          toast('Breakers ahead');
+        }
+      }
+    }
+    const moved = Math.hypot(nx - state.x, ny - state.y);
+    state.est -= (nx - state.x) * LEAGUES * (1 + state.err);
+    state.x = nx; state.y = ny;
+    state.speed = dd > 0 ? moved / dd : 0;
+  }
+
+  const before = Math.floor(state.day);
+  state.day += dd;
+  if (Math.floor(state.day) > before) newDay();
+
+  reveal(state.x, state.y, sightRadius());
+  if (state.day - state.lastTrack > 0.2) {
+    state.lastTrack = state.day;
+    state.track.push([state.x, state.y]);
+    if (state.track.length > 6000) state.track.shift();
+  }
+}
+
+// ---------------------------------------------------------------- render
+function fitZoom() {
+  const w = cv.clientWidth || 800;
+  cam.zoom = clamp(w / 120, 3, 14);
+}
+function overviewZoom() { return Math.min(cv.clientWidth / W, cv.clientHeight / H); }
+
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(cv.clientWidth * dpr);
+  cv.height = Math.round(cv.clientHeight * dpr);
+}
+
+const ROSES = [[0.56, 0.44], [0.3, 0.62], [0.78, 0.2]];
+function drawRhumbs(z) {
+  ctx.lineWidth = dpr / z;
+  for (const [u, v] of ROSES) {
+    const x = u * W, y = v * H;
+    for (let i = 0; i < 32; i++) {
+      const a = i / 32 * Math.PI * 2;
+      ctx.strokeStyle = i % 4 === 0 ? 'rgba(44,32,22,.22)' : i % 2 === 0 ? 'rgba(63,117,100,.24)' : 'rgba(163,58,34,.2)';
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * 520, y + Math.sin(a) * 520); ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(44,32,22,.35)';
+    ctx.beginPath(); ctx.arc(x, y, 3.2, 0, Math.PI * 2); ctx.stroke();
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2 - Math.PI / 2, l = i % 2 ? 2.2 : 4.2;
+      ctx.fillStyle = i % 2 ? 'rgba(63,117,100,.5)' : 'rgba(44,32,22,.55)';
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a) * l, y + Math.sin(a) * l);
+      ctx.lineTo(x + Math.cos(a + 0.35) * 0.9, y + Math.sin(a + 0.35) * 0.9);
+      ctx.lineTo(x + Math.cos(a - 0.35) * 0.9, y + Math.sin(a - 0.35) * 0.9);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+}
+
+function drawShip(sx, sy, a, size) {
+  ctx.save();
+  ctx.translate(sx, sy); ctx.rotate(a);
+  ctx.fillStyle = 'rgba(44,32,22,.25)';
+  ctx.beginPath(); ctx.moveTo(-size * 0.9, -size * 0.25); ctx.lineTo(-size * 2.4, -size * 0.5); ctx.lineTo(-size * 2.4, size * 0.5); ctx.lineTo(-size * 0.9, size * 0.25); ctx.fill();
+  ctx.fillStyle = '#4a2f1b';
+  ctx.beginPath();
+  ctx.moveTo(size, 0); ctx.quadraticCurveTo(size * 0.4, -size * 0.42, -size * 0.8, -size * 0.36);
+  ctx.lineTo(-size * 0.8, size * 0.36); ctx.quadraticCurveTo(size * 0.4, size * 0.42, size, 0);
+  ctx.fill();
+  ctx.fillStyle = '#f6eedb'; ctx.strokeStyle = '#2c2016'; ctx.lineWidth = size * 0.08;
+  for (const off of [0.35, -0.25]) {
+    ctx.beginPath(); ctx.rect(size * off - size * 0.12, -size * 0.7, size * 0.24, size * 1.4); ctx.fill(); ctx.stroke();
+  }
+  ctx.fillStyle = '#a33a22';
+  ctx.beginPath(); ctx.arc(size * 0.35, 0, size * 0.12, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function render() {
+  flushChart();
+  const w = cv.width, h = cv.height;
+  const targetZoom = cam.overview ? overviewZoom() : cam.zoom;
+  const curZ = cam.curZoom ?? targetZoom;
+  cam.curZoom = curZ + (targetZoom - curZ) * 0.15;
+  const zc = cam.curZoom;
+  const viewW = cv.clientWidth / zc, viewH = cv.clientHeight / zc;
+  let tx = cam.overview ? W / 2 : state.x, ty = cam.overview ? H / 2 : state.y;
+  if (viewW < W) tx = clamp(tx, viewW / 2, W - viewW / 2); else tx = W / 2;
+  if (viewH < H) ty = clamp(ty, viewH / 2, H - viewH / 2); else ty = H / 2;
+  cam.x += (tx - cam.x) * 0.12; cam.y += (ty - cam.y) * 0.12;
+
+  const z = zc * dpr;
+  const ox = w / 2 - cam.x * z, oy = h / 2 - cam.y * z;
+  cam.ox = ox; cam.oy = oy; cam.z = z;
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#1a130d'; ctx.fillRect(0, 0, w, h);
+  ctx.setTransform(z / S, 0, 0, z / S, ox, oy);
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(chart, 0, 0);
+
+  ctx.setTransform(z, 0, 0, z, ox, oy);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+  drawRhumbs(z);
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(44,32,22,.6)'; ctx.lineWidth = 1.2 * dpr / z;
+  // map border
+  ctx.strokeRect(0, 0, W, H);
+
+  // track
+  ctx.strokeStyle = 'rgba(163,58,34,.75)'; ctx.lineWidth = 1.6 * dpr / z;
+  ctx.setLineDash([4 * dpr / z, 3 * dpr / z]);
+  ctx.beginPath();
+  let pen = false;
+  for (const p of state.track) {
+    if (!p) { pen = false; continue; }
+    if (!pen) { ctx.moveTo(p[0], p[1]); pen = true; } else ctx.lineTo(p[0], p[1]);
+  }
+  if (pen) ctx.lineTo(state.x, state.y);
+  ctx.stroke();
+  // course
+  if (state.target) {
+    ctx.strokeStyle = 'rgba(44,32,22,.55)';
+    ctx.beginPath(); ctx.moveTo(state.x, state.y); ctx.lineTo(state.target.x, state.target.y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(state.target.x, state.target.y, 5 * dpr / z, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  // sight
+  ctx.strokeStyle = 'rgba(44,32,22,.18)'; ctx.lineWidth = dpr / z;
+  ctx.beginPath(); ctx.arc(state.x, state.y, sightRadius(), 0, Math.PI * 2); ctx.stroke();
+
+  // screen space from here
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const toS = (x, y) => [x * z + ox, y * z + oy];
+
+  // labels
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const lab = (text, x, y, size, color, italic = true) => {
+    const [sx, sy] = toS(x, y);
+    if (sx < -200 || sx > w + 200 || sy < -50 || sy > h + 50) return;
+    ctx.font = `${italic ? 'italic ' : ''}${size * dpr}px "IM Fell English", Georgia, serif`;
+    ctx.lineWidth = 3 * dpr; ctx.strokeStyle = 'rgba(236,224,196,.75)';
+    ctx.strokeText(text, sx, sy);
+    ctx.fillStyle = color; ctx.fillText(text, sx, sy);
+  };
+  const P = world.palos;
+  const [psx, psy] = toS(P.x + 2.5, P.y);
+  ctx.fillStyle = '#a33a22'; ctx.beginPath(); ctx.arc(psx, psy, 3.5 * dpr, 0, Math.PI * 2); ctx.fill();
+  lab('Palos', P.x + 2.5, P.y - 3.2, 14, '#2c2016');
+  lab('CASTILLA', 0.94 * W, 0.3 * H, 15, 'rgba(44,32,22,.8)', false);
+  lab('AFRICA', 0.95 * W, 0.68 * H, 15, 'rgba(44,32,22,.8)', false);
+  lab('Canarias', 0.8 * W, 0.6 * H, 13, '#2c2016');
+  lab('Açores', 0.635 * W, 0.335 * H, 13, '#2c2016');
+  for (const mid of state.found) {
+    const m = world.masses[mid];
+    lab(m.name, m.lx, m.ly, m.cells > 3000 ? 17 : 14, '#a33a22');
+  }
+
+  // ship
+  const [ssx, ssy] = toS(state.x, state.y);
+  drawShip(ssx, ssy, state.heading, Math.max(7, Math.min(13, zc * 1.6)) * dpr);
+
+  // night
+  const dk = darkness();
+  if (dk > 0) {
+    const sr = sightRadius() * z;
+    const g = ctx.createRadialGradient(ssx, ssy, sr * 0.5, ssx, ssy, sr * 1.6);
+    g.addColorStop(0, 'rgba(10,16,34,0)');
+    g.addColorStop(1, `rgba(10,16,34,${0.55 * dk})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  }
+  // storm
+  if (state.storm > 0) {
+    ctx.fillStyle = 'rgba(40,46,52,.18)'; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(220,226,230,.35)'; ctx.lineWidth = dpr;
+    const t = performance.now() / 1000;
+    ctx.beginPath();
+    for (let i = 0; i < 90; i++) {
+      const rx = ((i * 97.13 + t * 260) % (w + 100)) - 50, ry = ((i * 53.71 + t * 620) % (h + 100)) - 50;
+      ctx.moveTo(rx, ry); ctx.lineTo(rx - 6 * dpr, ry + 18 * dpr);
+    }
+    ctx.stroke();
+  }
+}
+
+// ---------------------------------------------------------------- input
+const keys = new Set();
+function setTurn() {
+  state.turn = (keys.has('L') ? -1 : 0) + (keys.has('R') ? 1 : 0);
+}
+addEventListener('keydown', e => {
+  if (modalOpen) return;
+  const k = e.key.toLowerCase();
+  if (k === 'arrowleft' || k === 'a') { keys.add('L'); setTurn(); e.preventDefault(); }
+  else if (k === 'arrowright' || k === 'd') { keys.add('R'); setTurn(); e.preventDefault(); }
+  else if (k === ' ') { toggleHeave(); e.preventDefault(); }
+  else if (k === 'e') goAshore();
+  else if (k === 'm') toggleChart();
+  else if (k === 'f') cycleSpeed();
+  else if (k === 'p') togglePause();
+  else if (k === '+' || k === '=') zoomBy(1.25);
+  else if (k === '-' || k === '_') zoomBy(0.8);
+});
+addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  if (k === 'arrowleft' || k === 'a') keys.delete('L');
+  if (k === 'arrowright' || k === 'd') keys.delete('R');
+  setTurn();
+});
+function holdButton(el, key) {
+  const on = e => { e.preventDefault(); keys.add(key); setTurn(); };
+  const off = () => { keys.delete(key); setTurn(); };
+  el.addEventListener('pointerdown', on);
+  el.addEventListener('pointerup', off);
+  el.addEventListener('pointerleave', off);
+  el.addEventListener('pointercancel', off);
+}
+holdButton($('bPort'), 'L');
+holdButton($('bStar'), 'R');
+function toggleHeave() { state.anchored = !state.anchored; if (state.anchored) state.target = null; updateHud(); }
+function toggleChart() { cam.overview = !cam.overview; updateHud(); }
+function togglePause() { state.paused = !state.paused; updateHud(); }
+function cycleSpeed() {
+  state.speedMult = state.speedMult === 1 ? 2 : state.speedMult === 2 ? 4 : 1;
+  $('bSpeed').textContent = state.speedMult + '×';
+}
+function zoomBy(f) {
+  if (cam.overview) { cam.overview = false; cam.curZoom = overviewZoom(); }
+  cam.zoom = clamp(cam.zoom * f, overviewZoom(), 16);
+  updateHud();
+}
+$('bHeave').onclick = toggleHeave;
+$('bShore').onclick = goAshore;
+$('bSpeed').onclick = cycleSpeed;
+$('bIn').onclick = () => zoomBy(1.25);
+$('bOut').onclick = () => zoomBy(0.8);
+$('bChart').onclick = toggleChart;
+$('bPause').onclick = togglePause;
+$('bNew').onclick = () => {
+  const wasPaused = state.paused; state.paused = true;
+  showModal({
+    eyebrow: 'Abandon this voyage',
+    title: 'Sail into a new world?',
+    html: '<p>This throws away your chart and starts over with a different, unknown world beyond the ocean.</p>',
+    buttons: [
+      { label: 'Start a new world', act: () => startFresh() },
+      { label: 'Keep sailing', act: () => { state.paused = wasPaused; } },
+    ],
+  });
+};
+cv.addEventListener('pointerdown', e => {
+  if (modalOpen || state.over) return;
+  const r = cv.getBoundingClientRect();
+  const x = ((e.clientX - r.left) * dpr - cam.ox) / cam.z;
+  const y = ((e.clientY - r.top) * dpr - cam.oy) / cam.z;
+  if (x < 0 || y < 0 || x > W || y > H) return;
+  state.target = { x, y };
+  state.anchored = false;
+  updateHud();
+});
+cv.addEventListener('wheel', e => { e.preventDefault(); zoomBy(e.deltaY < 0 ? 1.12 : 0.89); }, { passive: false });
+addEventListener('resize', () => { resize(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && state && !modalOpen) { state.paused = true; updateHud(); } });
+
+// ---------------------------------------------------------------- boot
+let last = performance.now(), hudT = 0;
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000);
+  last = now;
+  update(dt);
+  handleDiscovery();
+  render();
+  hudT += dt;
+  if (hudT > 0.12) { hudT = 0; updateHud(); drawCompass(); }
+  requestAnimationFrame(frame);
+}
+
+async function boot() {
+  try {
+    await Promise.race([
+      Promise.all([
+        document.fonts.load('italic 40px "IM Fell English"'),
+        document.fonts.load('20px "IM Fell English SC"'),
+      ]),
+      new Promise(r => setTimeout(r, 2500)),
+    ]);
+  } catch (e) { /* fall back to Georgia */ }
+  resize();
+  newGame((Math.random() * 2 ** 31) | 0);
+  updateHud(); drawCompass();
+  modalOpen = true;
+  requestAnimationFrame(t => { last = t; frame(t); });
+  showModal({
+    eyebrow: '3 August 1492 · Palos de la Frontera',
+    title: 'Beyond the edge of the chart',
+    html: `<p>You command three small ships and ninety men. You know the coast of Castile, the Canary Islands and the Azores. West of them your chart is blank parchment. No one in Europe knows what lies there, and neither do you: every voyage sails into a different, unknown world.</p>
+      <p>Sail west. Watch for birds, weed and driftwood: they are signs that land is near. Name every coast you sight, go ashore for water, and bring word home to Palos before the crew loses heart or the water runs out.</p>
+      <p><b>Mind the wind.</b> Caravels sail poorly into the wind. Near Palos the westerlies blow toward Europe; farther south, past the Canaries, the trade winds blow steadily west. Watch the green arrow on your compass.</p>
+      <p><i>Click or tap the chart to set a course. A/D or the Port and Starboard buttons steer by hand.</i></p>`,
+    buttons: [{ label: 'Weigh anchor', act: () => {} }],
+  });
+}
+boot();
+</script>
+</body>
+</html>
