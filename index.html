@@ -777,8 +777,8 @@ function watchName() {
   return `${names[w]} · glass ${glass}`;
 }
 function sightRadius() {
-  let r = 1.8 - 1.1 * darkness();
-  if (state.storm > 0) r = Math.min(r, 1);
+  let r = 9 - 5.5 * darkness();
+  if (state.storm > 0) r = Math.min(r, 5);
   return r;
 }
 
